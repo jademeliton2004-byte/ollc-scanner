@@ -53,10 +53,11 @@
           remarks: "Logged via QR scan"
         })
       })
-      .then(res => res.json())
-      .then(data => {
+      .then(res => res.text())   // DEBUG: kunin raw response muna
+      .then(text => {
+        console.log("Raw response:", text);
         document.getElementById("result").innerText =
-          "Scanned ID: " + studentId + " → " + data.message;
+          "Scanned ID: " + studentId + " → " + text;
       })
       .catch(err => {
         document.getElementById("result").innerText = "Error: " + err;
@@ -65,3 +66,4 @@
   </script>
 </body>
 </html>
+
