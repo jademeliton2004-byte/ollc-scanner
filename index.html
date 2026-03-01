@@ -7,7 +7,7 @@
   <style>
     body { font-family: Arial, sans-serif; text-align: center; }
     #reader { width: 300px; margin: 20px auto; border: 1px solid #ccc; }
-    #result { margin-top: 20px; font-weight: bold; }
+    #result { margin-top: 20px; font-weight: bold; white-space: pre-line; }
   </style>
 </head>
 <body>
@@ -17,7 +17,7 @@
   <label for="cameraSelect">Camera:</label>
   <select id="cameraSelect">
     <option value="user">Front</option>
-    <option value="environment">Back</option>
+    <option value="environment" selected>Back</option>
   </select>
   <button id="startBtn">Start Scanner</button>
 
@@ -26,7 +26,10 @@
 
   <script>
     let scanner;
-    const backendUrl = "https://script.google.com/macros/s/AKfycbwUbfFa8AyqxQLOogjcb3F8aI5w38rb9hu8vNGU-jxRr9fIM_D1eNs6DXtebtjrl6uy/exec";
+    let lastScanned = null;
+
+    // 👉 Palitan ito ng Web App URL mo
+    const backendUrl = "https://script.google.com/macros/s/AKfycbxyDxJjj4kL5WDxvnrFmAoG3ABO3W5YDm0Xrx5pwo45d1QwMCSjiIr-YOx7Sx1juJZ5WQ/exec";
 
     document.getElementById("startBtn").addEventListener("click", () => {
       if (scanner) scanner.stop().catch(()=>{});
@@ -44,6 +47,11 @@
     });
 
     function handleScan(studentId) {
+      if (studentId === lastScanned) return; // prevent duplicate logs
+      lastScanned = studentId;
+
+      document.getElementById("result").innerText = "Logging violation...";
+
       fetch(backendUrl, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -54,15 +62,24 @@
         })
       })
       .then(res => {
-        if (!res.ok) {
-          throw new Error("HTTP status " + res.status);
-        }
-        return res.json();   // parse JSON kapag tama ang response
+        if (!res.ok) throw new Error("HTTP status " + res.status);
+        return res.json();
       })
       .then(data => {
-        console.log("Parsed JSON:", data);
-        document.getElementById("result").innerText =
-          "Scanned ID: " + studentId + " → " + data.message;
+        if (data.student && data.student.found) {
+          document.getElementById("result").innerText =
+            `Scanned ID: ${studentId}\n` +
+            `Message: ${data.message}\n` +
+            `Name: ${data.student.name}\n` +
+            `Course: ${data.student.course}\n` +
+            `Level: ${data.student.level}\n` +
+            `Section: ${data.student.section}\n` +
+            `Violations: ${data.student.totalViolations}\n` +
+            `Last: ${data.student.lastViolation}`;
+        } else {
+          document.getElementById("result").innerText =
+            `Scanned ID: ${studentId}\nMessage: ${data.message}`;
+        }
       })
       .catch(err => {
         console.error("Fetch error:", err);
