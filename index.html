@@ -53,17 +53,24 @@
           remarks: "Logged via QR scan"
         })
       })
-      .then(res => res.text())   // DEBUG: kunin raw response muna
-      .then(text => {
-        console.log("Raw response:", text);
+      .then(res => {
+        if (!res.ok) {
+          throw new Error("HTTP status " + res.status);
+        }
+        return res.json();   // parse JSON kapag tama ang response
+      })
+      .then(data => {
+        console.log("Parsed JSON:", data);
         document.getElementById("result").innerText =
-          "Scanned ID: " + studentId + " → " + text;
+          "Scanned ID: " + studentId + " → " + data.message;
       })
       .catch(err => {
+        console.error("Fetch error:", err);
         document.getElementById("result").innerText = "Error: " + err;
       });
     }
   </script>
 </body>
 </html>
+
 
