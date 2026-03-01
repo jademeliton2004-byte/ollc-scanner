@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>OLLC Violation Scanner</title>
+  <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+  <style>
+    body { font-family: Arial, sans-serif; text-align: center; }
+    #reader { width: 300px; margin: 20px auto; border: 1px solid #ccc; }
+    #result { margin-top: 20px; font-weight: bold; }
+  </style>
+</head>
+<body>
+  <h2>OLLC Violation Scanner</h2>
+  <p>QR Code For Student Violation</p>
+
+  <label for="cameraSelect">Camera:</label>
+  <select id="cameraSelect">
+    <option value="user">Front</option>
+    <option value="environment">Back</option>
+  </select>
+  <button id="startBtn">Start Scanner</button>
+
+  <div id="reader"></div>
+  <div id="result">Waiting for scan...</div>
+
+  <script>
+    let scanner;
+    const backendUrl = "https://script.google.com/macros/s/AKfycbyBgxRFTLOn_AcsEvX47dWBozVlU1CedXmyN9LJfhd9ZbHfjRv19I_-gfOoEC22V5ML/exec";
+
+    document.getElementById("startBtn").addEventListener("click", () => {
+      if (scanner) scanner.stop().catch(()=>{});
+      const facingMode = document.getElementById("cameraSelect").value;
+      scanner = new Html5Qrcode("reader");
+
+      scanner.start(
+        { facingMode: facingMode },
+        { fps: 10, qrbox: { width: 250, height: 250 } },
+        decodedText => handleScan(decodedText.trim()),
+        errorMessage => console.warn(errorMessage)
+      ).catch(err => {
+        document.getElementById("result").innerText = "Camera error: " + err;
+      });
+    });
+
+    function handleScan(studentId) {
+      fetch(backendUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          studentId: studentId,
+          violationType: "Auto-scan violation",
+          remarks: "Logged via QR scan"
+        })
+      })
+      .then(res => res.json())
+      .then(data => {
+        document.getElementById("result").innerText =
+          "Scanned ID: " + studentId + " → " + data.message;
+      })
+      .catch(err => {
+        document.getElementById("result").innerText = "Error: " + err;
+      });
+    }
+  </script>
+</body>
+</html>
