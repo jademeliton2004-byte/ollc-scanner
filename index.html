@@ -26,8 +26,6 @@
 
   <script>
     let scanner;
-    // ✅ Ito na yung backend URL mo
-    const backendUrl = "https://script.google.com/macros/s/AKfycbwk94K9T7SUHY4wMP_CbcNwPGujGGTnROgkjEgqJ-FvFOWfbIZd9DTCnZekuYl41bAxUA/exec";
 
     document.getElementById("startBtn").addEventListener("click", () => {
       if (scanner) scanner.stop().catch(()=>{});
@@ -45,7 +43,7 @@
     });
 
     function handleScan(studentId) {
-      fetch(backendUrl, {
+      fetch("https://script.google.com/macros/s/AKfycbwk94K9T7SUHY4wMP_CbcNwPGujGGTnROgkjEgqJ-FvFOWfbIZd9DTCnZekuYl41bAxUA/exec", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -54,10 +52,15 @@
           remarks: "Logged via QR scan"
         })
       })
-      .then(res => res.json())
-      .then(data => {
-        document.getElementById("result").innerText =
-          "Scanned ID: " + studentId + " → " + data.message;
+      .then(res => res.text())
+      .then(text => {
+        try {
+          const data = JSON.parse(text);
+          document.getElementById("result").innerText =
+            "Scanned ID: " + studentId + " → " + data.message;
+        } catch {
+          document.getElementById("result").innerText = "Response: " + text;
+        }
       })
       .catch(err => {
         document.getElementById("result").innerText = "Error: " + err;
