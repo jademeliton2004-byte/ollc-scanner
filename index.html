@@ -2,61 +2,62 @@
 <html>
 <head>
   <meta charset="UTF-8">
-  <title>QR Code Scanner</title>
+  <title>OLLC Violation Scanner</title>
+  <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+  <style>
+    body { font-family: Arial, sans-serif; text-align: center; }
+    #reader { width: 300px; margin: 20px auto; border: 1px solid #ccc; }
+    #result { margin-top: 20px; font-weight: bold; }
+  </style>
 </head>
 <body>
-  <h2>QR Code Scanner</h2>
-  <video id="preview" width="320" height="240"></video>
+  <h2>OLLC Violation Scanner</h2>
+  <p>QR Code For Student Violation</p>
+
+  <label for="cameraSelect">Camera:</label>
+  <select id="cameraSelect">
+    <option value="user">Front</option>
+    <option value="environment">Back</option>
+  </select>
+  <button id="startBtn">Start Scanner</button>
+
+  <div id="reader"></div>
   <div id="result">Waiting for scan...</div>
 
-  <!-- Manual input fallback -->
-  <input type="text" id="manualInput" placeholder="Enter QR code manually">
-  <button onclick="sendData(document.getElementById('manualInput').value)">Submit</button>
-
-  <!-- Instascan library -->
-  <script src="https://cdn.rawgit.com/schmich/instascan-js/master/instascan.min.js"></script>
-
   <script>
-    // Initialize scanner
-    let scanner = new Instascan.Scanner({ video: document.getElementById('preview') });
+    let scanner;
+    // ✅ Ito na yung backend URL mo
+    const backendUrl = "https://script.google.com/macros/s/AKfycbwk94K9T7SUHY4wMP_CbcNwPGujGGTnROgkjEgqJ-FvFOWfbIZd9DTCnZekuYl41bAxUA/exec";
 
-    // When a QR code is scanned
-    scanner.addListener('scan', function (content) {
-      document.getElementById("result").innerText = "Scanned: " + content;
-      sendData(content);
+    document.getElementById("startBtn").addEventListener("click", () => {
+      if (scanner) scanner.stop().catch(()=>{});
+      const facingMode = document.getElementById("cameraSelect").value;
+      scanner = new Html5Qrcode("reader");
+
+      scanner.start(
+        { facingMode: facingMode },
+        { fps: 10, qrbox: { width: 250, height: 250 } },
+        decodedText => handleScan(decodedText.trim()),
+        errorMessage => console.warn(errorMessage)
+      ).catch(err => {
+        document.getElementById("result").innerText = "Camera error: " + err;
+      });
     });
 
-    // Try to start camera
-    Instascan.Camera.getCameras().then(function (cameras) {
-      if (cameras.length > 0) {
-        scanner.start(cameras[0]); // use first camera
-      } else {
-        document.getElementById("result").innerText = "No cameras found. Use manual input.";
-      }
-    }).catch(function (e) {
-      document.getElementById("result").innerText = "Camera error: " + e + ". Use manual input.";
-    });
-
-    // Send scanned or manual data to backend
-    function sendData(scannedCode) {
-      if (!scannedCode) {
-        document.getElementById("result").innerText = "Please enter a code.";
-        return;
-      }
-
-      fetch('https://script.google.com/macros/s/AKfycbw8_v_95vNXvV2Od0bhzldJzEisFBWC88GePcNWuXXHo-tz4JhKZvruTE06PfGu6UK2vw/exec', {
-        method: 'POST',
+    function handleScan(studentId) {
+      fetch(backendUrl, {
+        method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          studentId: scannedCode,
-          violationType: "Violation recorded",
-          remarks: "Logged via QR system"
+          studentId: studentId,
+          violationType: "Auto-scan violation",
+          remarks: "Logged via QR scan"
         })
       })
-      .then(response => response.json())
+      .then(res => res.json())
       .then(data => {
         document.getElementById("result").innerText =
-          "ID: " + scannedCode + " → " + data.message;
+          "Scanned ID: " + studentId + " → " + data.message;
       })
       .catch(err => {
         document.getElementById("result").innerText = "Error: " + err;
