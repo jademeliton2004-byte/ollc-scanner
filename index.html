@@ -2,86 +2,57 @@
 <html>
 <head>
   <meta charset="UTF-8">
-  <title>OLLC Violation Scanner</title>
-  <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
-  <style>
-    body { font-family: Arial, sans-serif; text-align: center; }
-    #reader { width: 300px; margin: 20px auto; border: 1px solid #ccc; }
-    #result { margin-top: 20px; font-weight: bold; white-space: pre-line; }
-  </style>
+  <title>QR Code Scanner</title>
 </head>
 <body>
-  <h2>OLLC Violation Scanner</h2>
-  <p>QR Code For Student Violation</p>
-
-  <label for="cameraSelect">Camera:</label>
-  <select id="cameraSelect">
-    <option value="user">Front</option>
-    <option value="environment" selected>Back</option>
-  </select>
-  <button id="startBtn">Start Scanner</button>
-
-  <div id="reader"></div>
+  <h2>QR Code Scanner</h2>
+  <video id="preview" width="320" height="240"></video>
   <div id="result">Waiting for scan...</div>
 
+  <!-- Instascan library -->
+  <script src="https://cdn.rawgit.com/schmich/instascan-js/master/instascan.min.js"></script>
+
   <script>
-    let scanner;
-    let lastScanned = null;
+    let scanner = new Instascan.Scanner({ video: document.getElementById('preview') });
 
-    const backendUrl = "https://script.google.com/macros/s/AKfycby2qc_kGGkogYGL-lS8ooV-CQodqldTFmngYzISY4doazwQohCm2m_zggA8bKr60DpT8A/exec";
-
-    document.getElementById("startBtn").addEventListener("click", () => {
-      if (scanner) scanner.stop().catch(()=>{});
-      const facingMode = document.getElementById("cameraSelect").value;
-      scanner = new Html5Qrcode("reader");
-
-      scanner.start(
-        { facingMode: facingMode },
-        { fps: 10, qrbox: { width: 250, height: 250 } },
-        decodedText => handleScan(decodedText.trim()),
-        errorMessage => console.warn(errorMessage)
-      ).catch(err => {
-        document.getElementById("result").innerText = "Camera error: " + err;
-      });
+    // When a QR code is scanned
+    scanner.addListener('scan', function (content) {
+      console.log('Scanned: ' + content);
+      sendData(content);
     });
 
-    function handleScan(studentId) {
-      if (studentId === lastScanned) return; // prevent duplicate logs
-      lastScanned = studentId;
+    // Start camera
+    Instascan.Camera.getCameras().then(function (cameras) {
+      if (cameras.length > 0) {
+        scanner.start(cameras[0]); // use first camera
+      } else {
+        console.error('No cameras found.');
+        document.getElementById("result").innerText = "No cameras found.";
+      }
+    }).catch(function (e) {
+      console.error(e);
+      document.getElementById("result").innerText = "Camera error: " + e;
+    });
 
-      document.getElementById("result").innerText = "Logging violation...";
-
-      fetch(https://script.google.com/macros/s/AKfycbxMVug29GSkbJxhoKZ0CZIyANGiRKCN1IdkCEmr0CvoTNhfREMvAwH1YgOdctD5NsZBqA/exec,{
-        method: "POST",
+    // Send scanned data to backend
+    function sendData(scannedCode) {
+      fetch('https://script.google.com/macros/s/AKfycbw8_v_95vNXvV2Od0bhzldJzEisFBWC88GePcNWuXXHo-tz4JhKZvruTE06PfGu6UK2vw/exec', {
+        method: 'POST',
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          studentId: studentId,
+          studentId: scannedCode,
           violationType: "Auto-scan violation",
           remarks: "Logged via QR scan"
         })
       })
-      .then(res => {
-        if (!res.ok) throw new Error("HTTP status " + res.status);
-        return res.json();
-      })
+      .then(response => response.json())
       .then(data => {
-        if (data.student && data.student.found) {
-          document.getElementById("result").innerText =
-            `Scanned ID: ${studentId}\n` +
-            `Message: ${data.message}\n` +
-            `Name: ${data.student.name}\n` +
-            `Course: ${data.student.course}\n` +
-            `Level: ${data.student.level}\n` +
-            `Section: ${data.student.section}\n` +
-            `Violations: ${data.student.totalViolations}\n` +
-            `Last: ${data.student.lastViolation}`;
-        } else {
-          document.getElementById("result").innerText =
-            `Scanned ID: ${studentId}\nMessage: ${data.message}`;
-        }
+        console.log(data.message);
+        document.getElementById("result").innerText =
+          "Scanned ID: " + scannedCode + " → " + data.message;
       })
       .catch(err => {
-        console.error("Fetch error:", err);
+        console.error("Error:", err);
         document.getElementById("result").innerText = "Error: " + err;
       });
     }
