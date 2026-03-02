@@ -13,11 +13,12 @@
   <script src="https://cdn.rawgit.com/schmich/instascan-js/master/instascan.min.js"></script>
 
   <script>
+    // Initialize scanner
     let scanner = new Instascan.Scanner({ video: document.getElementById('preview') });
 
     // When a QR code is scanned
     scanner.addListener('scan', function (content) {
-      console.log('Scanned: ' + content);
+      document.getElementById("result").innerText = "Scanned: " + content;
       sendData(content);
     });
 
@@ -26,11 +27,9 @@
       if (cameras.length > 0) {
         scanner.start(cameras[0]); // use first camera
       } else {
-        console.error('No cameras found.');
         document.getElementById("result").innerText = "No cameras found.";
       }
     }).catch(function (e) {
-      console.error(e);
       document.getElementById("result").innerText = "Camera error: " + e;
     });
 
@@ -47,12 +46,10 @@
       })
       .then(response => response.json())
       .then(data => {
-        console.log(data.message);
         document.getElementById("result").innerText =
           "Scanned ID: " + scannedCode + " → " + data.message;
       })
       .catch(err => {
-        console.error("Error:", err);
         document.getElementById("result").innerText = "Error: " + err;
       });
     }
